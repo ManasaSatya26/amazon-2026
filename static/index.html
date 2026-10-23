@@ -254,6 +254,27 @@
         line-height: 1.65;
       }
 
+      .demo-banner {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 20px;
+        padding: 10px 13px;
+        border: 1px solid #eadfc8;
+        border-radius: 9px;
+        color: #795c27;
+        background: #fff9ed;
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 0.06em;
+      }
+
+      .demo-banner svg {
+        width: 15px;
+        height: 15px;
+        flex: 0 0 auto;
+      }
+
       .overview-label {
         margin-bottom: 6px;
         color: var(--muted);
@@ -515,6 +536,72 @@
         text-align: center;
       }
 
+      .case-row {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr 0.9fr;
+        gap: 10px;
+        align-items: start;
+        padding: 15px 0 13px;
+        border-bottom: 1px solid #edf0eb;
+        color: #465249;
+        font-size: 11px;
+      }
+
+      .case-primary {
+        font-weight: 700;
+      }
+
+      .case-secondary {
+        display: block;
+        margin-top: 5px;
+        color: #89938a;
+        font-size: 9px;
+        line-height: 1.5;
+      }
+
+      .case-state {
+        display: inline-flex;
+        width: fit-content;
+        max-width: 100%;
+        padding: 5px 7px;
+        border-radius: 6px;
+        color: #8b692d;
+        background: var(--amber-pale);
+        font-size: 9px;
+        font-weight: 750;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+
+      .case-updated {
+        display: block;
+        margin-top: 6px;
+        color: #89938a;
+        font-size: 9px;
+      }
+
+      .case-evidence {
+        padding: 11px 0 2px;
+      }
+
+      .case-evidence summary {
+        color: #68756a;
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 650;
+      }
+
+      .case-evidence p {
+        margin: 8px 0 0;
+        padding: 10px 11px;
+        border: 1px solid #e8ece6;
+        border-radius: 8px;
+        color: #7a857c;
+        background: #fbfcfa;
+        font-size: 10px;
+        line-height: 1.55;
+      }
+
       .empty-icon {
         display: grid;
         width: 38px;
@@ -608,6 +695,60 @@
         color: #89938a;
         font-size: 10px;
         line-height: 1.55;
+      }
+
+      .trace-events {
+        display: grid;
+        gap: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .trace-event {
+        position: relative;
+        display: grid;
+        grid-template-columns: 9px minmax(0, 1fr);
+        gap: 9px;
+        padding: 0 0 14px;
+      }
+
+      .trace-event:last-child {
+        padding-bottom: 0;
+      }
+
+      .trace-event:not(:last-child)::after {
+        position: absolute;
+        top: 9px;
+        bottom: 0;
+        left: 3px;
+        width: 1px;
+        background: #e3e9e1;
+        content: "";
+      }
+
+      .trace-event-dot {
+        z-index: 1;
+        width: 7px;
+        height: 7px;
+        margin-top: 4px;
+        border: 1px solid #8ca993;
+        border-radius: 50%;
+        background: #edf4ee;
+      }
+
+      .trace-event strong {
+        display: block;
+        color: #536056;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .trace-event span {
+        display: block;
+        margin-top: 3px;
+        color: #929b93;
+        font-size: 9px;
       }
 
       .feed-list {
@@ -893,10 +1034,6 @@
       <main class="main" id="home">
         <header class="topbar">
           <div class="breadcrumb">Workspace <span aria-hidden="true">/</span> <strong>Overview</strong></div>
-          <div class="connection-status" role="status">
-            <span class="status-dot" aria-hidden="true"></span>
-            Backend integration pending
-          </div>
         </header>
 
         <div class="content">
@@ -905,8 +1042,8 @@
               <p class="eyebrow">Household recall workspace</p>
               <h1 id="page-title">Know what’s in your home.</h1>
               <p class="page-description">
-                Keep product checks, recall evidence, and case activity together.
-                Recall lookup is not connected yet, so no checks have been run.
+                A demo snapshot of product details, case activity, and illustrative feed status.
+                This page does not perform a live recall lookup.
               </p>
             </div>
             <div class="overview">
@@ -957,6 +1094,7 @@
                           type="text"
                           placeholder="e.g. countertop toaster oven"
                           autocomplete="off"
+                          value="Electric Kettle"
                           required
                         >
                       </div>
@@ -968,6 +1106,7 @@
                           type="text"
                           placeholder="As shown on the label"
                           autocomplete="off"
+                          value="ExampleHome"
                         >
                       </div>
                       <div class="field">
@@ -978,6 +1117,18 @@
                           type="text"
                           placeholder="e.g. AB-123"
                           autocomplete="off"
+                          value="EK-200"
+                        >
+                      </div>
+                      <div class="field full">
+                        <label for="product-serial">Serial number</label>
+                        <input
+                          id="product-serial"
+                          name="serial"
+                          type="text"
+                          placeholder="As shown on the product"
+                          autocomplete="off"
+                          value="DEMO12345"
                         >
                       </div>
                     </div>
@@ -989,7 +1140,7 @@
                         </svg>
                         Check recalls
                       </button>
-                      <span class="form-note">No product details leave this page.</span>
+                      <span class="form-note">Demo values only · no live check is performed.</span>
                     </div>
                     <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
                   </form>
@@ -1002,7 +1153,7 @@
                     <h2 class="card-title" id="ledger-title">Case ledger</h2>
                     <p class="card-subtitle">Review each product check and its current case state.</p>
                   </div>
-                  <span class="soft-label">No cases loaded</span>
+                  <span class="soft-label">1 demo case</span>
                 </header>
                 <div class="ledger-body">
                   <div class="ledger-columns" aria-hidden="true">
@@ -1010,23 +1161,28 @@
                     <span>Recall record</span>
                     <span>Case state</span>
                   </div>
-                  <div class="empty-ledger">
-                    <span class="empty-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M7 4.5h8l3 3V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V6a1.5 1.5 0 0 1 1-1.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-                        <path d="M14.5 4.8V8H18M9 12h6M9 15.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                      </svg>
-                    </span>
-                    <strong>Your case ledger is waiting</strong>
-                    <p>Case listing is not available in the current backend, so no case records or states are shown.</p>
-                    <details class="evidence-disclosure">
-                      <summary>Why are evidence details unavailable?</summary>
-                      <p class="evidence-copy">
-                        Recall checks and case retrieval are not exposed by the current API. Evidence will appear
-                        here when a backend contract provides real case records and source excerpts.
-                      </p>
-                    </details>
+                  <div class="case-row">
+                    <div>
+                      <span class="case-primary">Electric Kettle</span>
+                      <span class="case-secondary">ExampleHome · EK-200</span>
+                      <span class="case-secondary">Case RC-DEMO-001</span>
+                    </div>
+                    <div>
+                      <span class="case-primary">Demo review</span>
+                      <span class="case-secondary">Illustrative record</span>
+                    </div>
+                    <div>
+                      <span class="case-state">POSSIBLE_MATCH</span>
+                      <span class="case-updated">Updated today</span>
+                    </div>
                   </div>
+                  <details class="case-evidence">
+                    <summary>View demo evidence details</summary>
+                    <p>
+                      Illustrative review placeholder only. No recall record was checked, and this demo does not
+                      determine whether Electric Kettle model EK-200 is recalled or safe.
+                    </p>
+                  </details>
                 </div>
               </section>
             </div>
@@ -1038,7 +1194,7 @@
                     <h2 class="card-title" id="trace-title">Tool-call trace</h2>
                     <p class="card-subtitle">A transparent view of lookup activity.</p>
                   </div>
-                  <span class="soft-label">Idle</span>
+                  <span class="soft-label">Demo trace</span>
                 </header>
                 <div class="trace-body">
                   <div class="trace-status">
@@ -1046,12 +1202,31 @@
                       <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/>
                       <path d="M12 7.5v4.8l3 1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    No lookup activity
+                    Illustrative audit activity
                   </div>
-                  <div class="trace-empty">
-                    <strong>No tool calls to show</strong>
-                    <p>Tool execution is not implemented in the current backend. Submitting the product form will not run a lookup.</p>
-                  </div>
+                  <ol class="trace-events" aria-label="Demo audit events">
+                    <li class="trace-event">
+                      <span class="trace-event-dot" aria-hidden="true"></span>
+                      <div>
+                        <strong>Product registered</strong>
+                        <span>Electric Kettle · demo event</span>
+                      </div>
+                    </li>
+                    <li class="trace-event">
+                      <span class="trace-event-dot" aria-hidden="true"></span>
+                      <div>
+                        <strong>Recall feed checked</strong>
+                        <span>Illustrative event · no live lookup</span>
+                      </div>
+                    </li>
+                    <li class="trace-event">
+                      <span class="trace-event-dot" aria-hidden="true"></span>
+                      <div>
+                        <strong>Potential match flagged for review</strong>
+                        <span>RC-DEMO-001 · sample audit event</span>
+                      </div>
+                    </li>
+                  </ol>
                 </div>
               </section>
 
@@ -1061,27 +1236,27 @@
                     <h2 class="card-title" id="feeds-title">Recall feeds</h2>
                     <p class="card-subtitle">Source availability and freshness.</p>
                   </div>
-                  <span class="soft-label">Unconfigured</span>
+                  <span class="soft-label">Demo snapshot</span>
                 </header>
                 <div class="feed-list">
                   <div class="feed-row">
-                    <span class="feed-name">Feed source</span>
-                    <span class="feed-state">Not connected</span>
-                    <span class="feed-meta">Source: not available</span>
+                    <span class="feed-name">Example recall feed</span>
+                    <span class="feed-state">Demo only</span>
+                    <span class="feed-meta">Illustrative source · not connected</span>
                   </div>
                   <div class="feed-row">
                     <span class="feed-name">Records</span>
-                    <span class="feed-state">Unknown</span>
-                    <span class="feed-meta">Record count: not available</span>
+                    <span class="feed-state">12 samples</span>
+                    <span class="feed-meta">Mock record count</span>
                   </div>
                   <div class="feed-row">
                     <span class="feed-name">Last fetch</span>
-                    <span class="feed-state">Unknown</span>
-                    <span class="feed-meta">Stale status: unknown</span>
+                    <span class="feed-state">Demo snapshot</span>
+                    <span class="feed-meta">Today · freshness not verified</span>
                   </div>
                 </div>
                 <p class="feed-note">
-                  Feed status is not exposed by the current backend. No source freshness is implied.
+                  Sample values for the demo only. No live feed was fetched; source freshness is unknown.
                 </p>
               </section>
             </div>
@@ -1104,7 +1279,7 @@
       productForm.addEventListener("submit", (event) => {
         event.preventDefault();
         formFeedback.textContent =
-          "No lookup was performed. The current backend does not provide a recall-check endpoint.";
+          "Demo data only — no live recall lookup was performed.";
       });
     </script>
   </body>
