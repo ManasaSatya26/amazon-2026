@@ -1,0 +1,88 @@
+[
+  {
+    "RecallID": 10548,
+    "RecallNumber": "26174",
+    "RecallDate": "2026-01-08T00:00:00",
+    "Description": "This recall involves Vasicar 18-Drawer Dressers. The dressers were sold in black, white, gray, and mixed colors. They have a metal frame, wooden top, and 18 collapsable fabric drawers. The dressers are 37.8 inches long by 11.8 inches wide by 57.1 inches tall.",
+    "URL": "https://www.cpsc.gov/Recalls/2026/Vasicar-18-Drawer-Dressers-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Tip-Over-and-Entrapment-Violates-Mandatory-Standard-for-Clothing-Storage-Units",
+    "Title": "Vasicar 18-Drawer Dressers Recalled Due to Risk of Serious Injury or Death from Tip-Over and Entrapment; Violates Mandatory Standard for Clothing Storage Units",
+    "ConsumerContact": "Vasicar via email at vasicarus2025@outlook.com.",
+    "LastPublishDate": "2026-01-09T00:00:00",
+    "Products": [
+      {
+        "Name": "Vasicar 18-Drawer Dressers",
+        "Description": "",
+        "Model": "VR-US18D",
+        "Type": "",
+        "CategoryID": "",
+        "NumberOfUnits": "About 4,155"
+      }
+    ],
+    "Retailers": [
+      {
+        "Name": "Online at Amazon.com from September 2025 through November 2025 for about $120.",
+        "CompanyID": ""
+      }
+    ],
+    "Hazards": [
+      {
+        "Name": "The recalled dressers are unstable if they are not anchored to the wall, posing tip-over and entrapment hazards that can result in risks of serious injuries or death to children.",
+        "HazardType": "",
+        "HazardTypeID": ""
+      }
+    ],
+    "Remedies": [
+      {
+        "Name": "Consumers should immediately stop using the recalled dressers, if they are not anchored to the wall, and place them in an area that children cannot access. Contact Vasicar for instructions on how to dispose of the dressers to receive a full refund."
+      }
+    ],
+    "RemedyOptions": [
+      {
+        "Option": "Refund"
+      }
+    ]
+  },
+  {
+    "RecallID": 10549,
+    "RecallNumber": "26175",
+    "RecallDate": "2026-01-08T00:00:00",
+    "Description": "This recall involves YOLAAH Bed Rails, model BR-01. The bed rail has a black rubber hand grip, storage pocket, and white metal base. The bed rails measure 15.8 inches tall by 26.8 inches wide. The bed rail has \"YOLAAH\" printed on the storage pocket.",
+    "URL": "https://www.cpsc.gov/Recalls/2026/YOLAAH-Adult-Portable-Bed%20Rails-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-and-Asphyxiation-Hazards-Violate-Mandatory-Standard-for-Adult-Portable-Bed-Rails",
+    "Title": "YOLAAH Adult Portable Bed Rails Recalled Due to Risk of Serious Injury or Death from Entrapment and Asphyxiation Hazards; Violate Mandatory Standard for Adult Portable Bed Rails",
+    "ConsumerContact": "Email YOLAAH at yolaahproductrecall@outlook.com.",
+    "LastPublishDate": "2026-01-09T00:00:00",
+    "Products": [
+      {
+        "Name": "YOLAAH Portable Bed Rails",
+        "Description": "",
+        "Model": "BR-01",
+        "Type": "",
+        "CategoryID": "",
+        "NumberOfUnits": "About 14,250"
+      }
+    ],
+    "Retailers": [
+      {
+        "Name": "Online at Amazon.com from September 2025 through October 2025 for about $35.",
+        "CompanyID": ""
+      }
+    ],
+    "Hazards": [
+      {
+        "Name": "The recalled bed rails violate the mandatory standard for adult portable bed rails because, when the bed rails are attached to a bed, users can become entrapped within the bed rail or between the bed rail and the side of the mattress, posing a serious entrapment hazard and risk of death by asphyxiation.",
+        "HazardType": "",
+        "HazardTypeID": ""
+      }
+    ],
+    "Remedies": [
+      {
+        "Name": "Consumers should immediately stop using the YOLAAH Bed Rail and contact YOLAAH for a refund."
+      }
+    ],
+    "RemedyOptions": [
+      {
+        "Option": "Refund"
+      }
+    ]
+  }
+]
