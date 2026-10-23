@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import httpx
 from fastapi.testclient import TestClient
 
 from core import CaseState, RecallCloserCore
@@ -164,6 +165,104 @@ class TestServerRoutes(unittest.TestCase):
         content_str = response.text
         self.assertNotIn(fake_api_key, content_str)
         self.assertIn("[REDACTED_API_KEY]", content_str)
+
+    def test_post_and_get_items(self) -> None:
+        create_resp = self.client.post(
+            "/api/items",
+            json={"name": "Stand Mixer", "brand": "MixPro", "model": "MP-500", "upc": "999888"},
+        )
+        self.assertEqual(create_resp.status_code, 200)
+        created = create_resp.json()
+        self.assertTrue(created["success"])
+        item_id = created["item_id"]
+        self.assertEqual(created["name"], "Stand Mixer")
+
+        list_resp = self.client.get("/api/items")
+        self.assertEqual(list_resp.status_code, 200)
+        items_data = list_resp.json()
+        self.assertTrue(items_data["success"])
+        self.assertEqual(items_data["count"], 1)
+        self.assertEqual(items_data["items"][0]["id"], item_id)
+
+    def test_check_recalls_endpoint(self) -> None:
+        item_id = self.core.add_item("Electric Toaster", brand="ToastMaster", model="TM-2")
+        self.core.cache_recall(
+            "REC-TOAST",
+            "ToastMaster Electric Toaster Recall",
+            "CPSC",
+            "Recalls model TM-2 due to burn risk.",
+        )
+
+        resp = self.client.post("/api/check-recalls", json={"item_id": item_id})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["match_count"], 1)
+        match = data["matches"][0]
+        self.assertEqual(match["match_type"], "EXACT_MODEL")
+        self.assertEqual(match["state"], CaseState.CONFIRMED_AFFECTED.value)
+
+    def test_advance_case_valid_and_invalid(self) -> None:
+        item_id = self.core.add_item("Coffee Maker", brand="BrewCo", model="BC-1")
+        self.core.cache_recall("REC-BREW", "BrewCo Recall", "CPSC", "Hazard description.")
+        case_id = self.core.create_case(item_id, "REC-BREW")
+
+        # Invalid transition: missing required label_evidence from POSSIBLE_MATCH
+        bad_resp = self.client.post(
+            f"/api/cases/{case_id}/advance",
+            json={"new_state": CaseState.CONFIRMED_AFFECTED.value},
+        )
+        self.assertEqual(bad_resp.status_code, 400)
+        self.assertIn("Label evidence is required", bad_resp.json()["detail"])
+
+        # Check audit log captures rejected attempt
+        audits = self.core.list_audit_log(case_id=case_id)
+        self.assertTrue(any(a["outcome"] == "REJECTED" for a in audits))
+
+        # Valid transition with label_evidence
+        good_resp = self.client.post(
+            f"/api/cases/{case_id}/advance",
+            json={
+                "new_state": CaseState.CONFIRMED_AFFECTED.value,
+                "label_evidence": "Confirmed label on unit matches model BC-1 in recall notice.",
+            },
+        )
+        self.assertEqual(good_resp.status_code, 200)
+        good_data = good_resp.json()
+        self.assertTrue(good_data["success"])
+        self.assertEqual(good_data["case"]["state"], CaseState.CONFIRMED_AFFECTED.value)
+
+    def test_sync_feeds_endpoint(self) -> None:
+        mock_client = MagicMock(spec=httpx.Client)
+        mock_client.get.side_effect = httpx.ConnectError("Simulated offline for test")
+        with patch("httpx.Client", return_value=mock_client):
+            resp = self.client.post("/api/feeds/sync")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["success"])
+        self.assertIn("sync", data)
+        self.assertIn("feed_status", data)
+        self.assertIn("feed_source", data["feed_status"])
+
+    def test_cors_and_static_files(self) -> None:
+        # Test CORS headers on API
+        resp = self.client.get("/api/status", headers={"Origin": "http://localhost:3000"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("access-control-allow-origin"), "http://localhost:3000")
+
+        # Test StaticFiles mount
+        static_resp = self.client.get("/static/index.html")
+        self.assertEqual(static_resp.status_code, 200)
+        self.assertIn("Recall Closer", static_resp.text)
+
+    def test_chat_fallback_handles_check_recalls(self) -> None:
+        self.core.add_item("Pressure Cooker", brand="CookFast", model="CF-10")
+        resp = self.client.post("/chat", json={"message": "Please check my recalls"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("Deterministic recall check executed", data["response"])
+        self.assertEqual(len(data["tools_called"]), 1)
+        self.assertEqual(data["tools_called"][0]["tool"], "check_recalls")
 
 
 if __name__ == "__main__":

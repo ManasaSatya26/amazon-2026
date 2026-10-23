@@ -488,6 +488,47 @@
         height: 14px;
       }
 
+      .secondary-button {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: #465249;
+        background: #fbfcf8;
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 650;
+        transition: background 140ms ease;
+      }
+
+      .secondary-button:hover {
+        background: #f1f4ef;
+      }
+
+      .danger-button {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        justify-content: center;
+        padding: 0 10px;
+        border: 1px solid #f0d5d5;
+        border-radius: 6px;
+        color: #9c2e2e;
+        background: #fff5f5;
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 650;
+        transition: background 140ms ease;
+      }
+
+      .danger-button:hover {
+        background: #fee;
+      }
+
       .form-note {
         color: #909a91;
         font-size: 10px;
@@ -1034,6 +1075,10 @@
       <main class="main" id="home">
         <header class="topbar">
           <div class="breadcrumb">Workspace <span aria-hidden="true">/</span> <strong>Overview</strong></div>
+          <div class="connection-status" id="connection-status">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="connection-text">Connecting...</span>
+          </div>
         </header>
 
         <div class="content">
@@ -1042,13 +1087,12 @@
               <p class="eyebrow">Household recall workspace</p>
               <h1 id="page-title">Know what’s in your home.</h1>
               <p class="page-description">
-                A demo snapshot of product details, case activity, and illustrative feed status.
-                This page does not perform a live recall lookup.
+                Check household inventory against official CPSC product recall records with deterministic matching, evidence verification, and audit tracking.
               </p>
             </div>
             <div class="overview">
               <div class="overview-label">Workspace status</div>
-              <div class="overview-value">Setup in progress</div>
+              <div class="overview-value" id="workspace-status">Ready</div>
             </div>
           </section>
 
@@ -1058,14 +1102,14 @@
                 <header class="card-header">
                   <div>
                     <h2 class="card-title" id="check-title">Check a household product</h2>
-                    <p class="card-subtitle">Add the details from the product label to prepare a check.</p>
+                    <p class="card-subtitle">Add details from the product label to run a deterministic recall check.</p>
                   </div>
-                  <span class="soft-label">
+                  <span class="soft-label" id="api-status-badge">
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path d="M12 3.5 5 6v5.1c0 4.5 2.9 7.7 7 9.4 4.1-1.7 7-4.9 7-9.4V6l-7-2.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
                       <path d="M12 8v4.5M12 16h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                     </svg>
-                    Not connected
+                    API Ready
                   </span>
                 </header>
                 <div class="chat-body">
@@ -1076,12 +1120,24 @@
                         <path d="M8 11h.01M12 11h.01M16 11h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
                       </svg>
                     </span>
-                    <div class="assistant-copy">
+                    <div class="assistant-copy" id="assistant-copy">
                       <strong>Start with the label.</strong> Enter the product name and any brand or model
-                      information you can find. This form is a UI preview; it does not submit or check
-                      your details.
+                      information you can find. Details are checked deterministically against cached official recall records.
                     </div>
                   </div>
+
+                  <form id="chat-form" style="display: flex; gap: 8px; margin-bottom: 18px;">
+                    <input
+                      id="chat-input"
+                      type="text"
+                      placeholder="Ask assistant (e.g. 'Check my recalls' or 'What is the feed status?')"
+                      autocomplete="off"
+                      style="flex: 1; min-height: 36px; padding: 7px 11px; border: 1px solid #e1e7df; border-radius: 8px; font-size: 11px;"
+                    >
+                    <button id="chat-submit" class="secondary-button" type="submit" style="min-height: 36px; padding: 0 14px;">
+                      Ask assistant
+                    </button>
+                  </form>
 
                   <p class="form-heading">Product details</p>
                   <form class="product-form" id="product-form">
@@ -1094,7 +1150,6 @@
                           type="text"
                           placeholder="e.g. countertop toaster oven"
                           autocomplete="off"
-                          value="Electric Kettle"
                           required
                         >
                       </div>
@@ -1106,7 +1161,6 @@
                           type="text"
                           placeholder="As shown on the label"
                           autocomplete="off"
-                          value="ExampleHome"
                         >
                       </div>
                       <div class="field">
@@ -1117,30 +1171,28 @@
                           type="text"
                           placeholder="e.g. AB-123"
                           autocomplete="off"
-                          value="EK-200"
                         >
                       </div>
                       <div class="field full">
-                        <label for="product-serial">Serial number</label>
+                        <label for="product-upc">Serial / UPC number</label>
                         <input
-                          id="product-serial"
-                          name="serial"
+                          id="product-upc"
+                          name="upc"
                           type="text"
-                          placeholder="As shown on the product"
+                          placeholder="As shown on barcode or tag"
                           autocomplete="off"
-                          value="DEMO12345"
                         >
                       </div>
                     </div>
                     <div class="form-actions">
-                      <button class="primary-button" type="submit">
+                      <button class="primary-button" id="btn-check-recalls" type="submit">
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                           <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8"/>
                           <path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
                         Check recalls
                       </button>
-                      <span class="form-note">Demo values only · no live check is performed.</span>
+                      <span class="form-note">Product is registered in inventory and checked against official recall records.</span>
                     </div>
                     <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
                   </form>
@@ -1151,9 +1203,9 @@
                 <header class="card-header">
                   <div>
                     <h2 class="card-title" id="ledger-title">Case ledger</h2>
-                    <p class="card-subtitle">Review each product check and its current case state.</p>
+                    <p class="card-subtitle">Review each product check, deterministic evidence, and case lifecycle.</p>
                   </div>
-                  <span class="soft-label">1 demo case</span>
+                  <span class="soft-label" id="case-count-label">0 cases</span>
                 </header>
                 <div class="ledger-body">
                   <div class="ledger-columns" aria-hidden="true">
@@ -1161,28 +1213,17 @@
                     <span>Recall record</span>
                     <span>Case state</span>
                   </div>
-                  <div class="case-row">
-                    <div>
-                      <span class="case-primary">Electric Kettle</span>
-                      <span class="case-secondary">ExampleHome · EK-200</span>
-                      <span class="case-secondary">Case RC-DEMO-001</span>
-                    </div>
-                    <div>
-                      <span class="case-primary">Demo review</span>
-                      <span class="case-secondary">Illustrative record</span>
-                    </div>
-                    <div>
-                      <span class="case-state">POSSIBLE_MATCH</span>
-                      <span class="case-updated">Updated today</span>
-                    </div>
+                  <div id="cases-container"></div>
+                  <div class="empty-ledger" id="empty-ledger">
+                    <span class="empty-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M7 4.5h8l3 3V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V6a1.5 1.5 0 0 1 1-1.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M14.5 4.8V8H18M9 12h6M9 15.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                      </svg>
+                    </span>
+                    <strong>Your case ledger is empty</strong>
+                    <p>Register a product above to check for official recall records and track case progression.</p>
                   </div>
-                  <details class="case-evidence">
-                    <summary>View demo evidence details</summary>
-                    <p>
-                      Illustrative review placeholder only. No recall record was checked, and this demo does not
-                      determine whether Electric Kettle model EK-200 is recalled or safe.
-                    </p>
-                  </details>
                 </div>
               </section>
             </div>
@@ -1192,41 +1233,23 @@
                 <header class="card-header">
                   <div>
                     <h2 class="card-title" id="trace-title">Tool-call trace</h2>
-                    <p class="card-subtitle">A transparent view of lookup activity.</p>
+                    <p class="card-subtitle">A transparent audit log of backend operations.</p>
                   </div>
-                  <span class="soft-label">Demo trace</span>
+                  <span class="soft-label" id="trace-badge">Idle</span>
                 </header>
                 <div class="trace-body">
-                  <div class="trace-status">
+                  <div class="trace-status" id="trace-status">
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/>
                       <path d="M12 7.5v4.8l3 1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    Illustrative audit activity
+                    <span id="trace-status-text">Recent audit events</span>
                   </div>
-                  <ol class="trace-events" aria-label="Demo audit events">
-                    <li class="trace-event">
-                      <span class="trace-event-dot" aria-hidden="true"></span>
-                      <div>
-                        <strong>Product registered</strong>
-                        <span>Electric Kettle · demo event</span>
-                      </div>
-                    </li>
-                    <li class="trace-event">
-                      <span class="trace-event-dot" aria-hidden="true"></span>
-                      <div>
-                        <strong>Recall feed checked</strong>
-                        <span>Illustrative event · no live lookup</span>
-                      </div>
-                    </li>
-                    <li class="trace-event">
-                      <span class="trace-event-dot" aria-hidden="true"></span>
-                      <div>
-                        <strong>Potential match flagged for review</strong>
-                        <span>RC-DEMO-001 · sample audit event</span>
-                      </div>
-                    </li>
-                  </ol>
+                  <ol class="trace-events" id="trace-events-list" aria-label="Audit events"></ol>
+                  <div class="trace-empty" id="trace-empty">
+                    <strong>No audit activity yet</strong>
+                    <p>State transitions and tool actions will be displayed here in real time.</p>
+                  </div>
                 </div>
               </section>
 
@@ -1236,27 +1259,32 @@
                     <h2 class="card-title" id="feeds-title">Recall feeds</h2>
                     <p class="card-subtitle">Source availability and freshness.</p>
                   </div>
-                  <span class="soft-label">Demo snapshot</span>
+                  <span class="soft-label" id="feed-badge">Checking...</span>
                 </header>
                 <div class="feed-list">
                   <div class="feed-row">
-                    <span class="feed-name">Example recall feed</span>
-                    <span class="feed-state">Demo only</span>
-                    <span class="feed-meta">Illustrative source · not connected</span>
+                    <span class="feed-name">Feed source</span>
+                    <span class="feed-state" id="feed-source-state">Checking</span>
+                    <span class="feed-meta" id="feed-source-meta">CPSC SaferProducts</span>
                   </div>
                   <div class="feed-row">
                     <span class="feed-name">Records</span>
-                    <span class="feed-state">12 samples</span>
-                    <span class="feed-meta">Mock record count</span>
+                    <span class="feed-state" id="feed-records-state">0 cached</span>
+                    <span class="feed-meta" id="feed-records-meta">Recalls cache</span>
                   </div>
                   <div class="feed-row">
-                    <span class="feed-name">Last fetch</span>
-                    <span class="feed-state">Demo snapshot</span>
-                    <span class="feed-meta">Today · freshness not verified</span>
+                    <span class="feed-name">Freshness</span>
+                    <span class="feed-state" id="feed-freshness-state">Unknown</span>
+                    <span class="feed-meta" id="feed-freshness-meta">Live check status</span>
                   </div>
                 </div>
-                <p class="feed-note">
-                  Sample values for the demo only. No live feed was fetched; source freshness is unknown.
+                <div style="padding: 12px 20px 0;">
+                  <button id="btn-sync-feeds" class="secondary-button" type="button">
+                    Sync recall feeds
+                  </button>
+                </div>
+                <p class="feed-note" id="feed-note">
+                  Recall data is synchronized with CPSC notices. Live API data is distinguished from local snapshot fallback.
                 </p>
               </section>
             </div>
@@ -1273,14 +1301,380 @@
       </main>
     </div>
     <script>
+      const API_BASE = window.location.port === "8000" ? "" : "http://localhost:8000";
+
       const productForm = document.querySelector("#product-form");
       const formFeedback = document.querySelector("#form-feedback");
+      const chatForm = document.querySelector("#chat-form");
+      const chatInput = document.querySelector("#chat-input");
+      const assistantCopy = document.querySelector("#assistant-copy");
+      const casesContainer = document.querySelector("#cases-container");
+      const emptyLedger = document.querySelector("#empty-ledger");
+      const caseCountLabel = document.querySelector("#case-count-label");
+      const traceEventsList = document.querySelector("#trace-events-list");
+      const traceEmpty = document.querySelector("#trace-empty");
+      const traceBadge = document.querySelector("#trace-badge");
+      const connectionStatus = document.querySelector("#connection-status");
+      const connectionText = document.querySelector("#connection-text");
+      const statusDot = document.querySelector("#status-dot");
+      const workspaceStatus = document.querySelector("#workspace-status");
+      const apiStatusBadge = document.querySelector("#api-status-badge");
+      const feedBadge = document.querySelector("#feed-badge");
+      const feedSourceState = document.querySelector("#feed-source-state");
+      const feedSourceMeta = document.querySelector("#feed-source-meta");
+      const feedRecordsState = document.querySelector("#feed-records-state");
+      const feedRecordsMeta = document.querySelector("#feed-records-meta");
+      const feedFreshnessState = document.querySelector("#feed-freshness-state");
+      const feedFreshnessMeta = document.querySelector("#feed-freshness-meta");
+      const feedNote = document.querySelector("#feed-note");
+      const btnSyncFeeds = document.querySelector("#btn-sync-feeds");
 
-      productForm.addEventListener("submit", (event) => {
+      function escapeHtml(text) {
+        if (!text) return "";
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      async function fetchStatus() {
+        try {
+          const res = await fetch(`${API_BASE}/api/status`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+
+          connectionText.textContent = "Connected";
+          statusDot.style.background = "#316b4d";
+          workspaceStatus.textContent = `${data.inventory_count} items · ${data.active_cases_count} cases`;
+          apiStatusBadge.textContent = "API Active";
+
+          const fs = data.feed_status || {};
+          const isLive = fs.is_live || fs.feed_source === "cpsc_api";
+          const isStale = fs.stale !== undefined ? fs.stale : !isLive;
+
+          feedBadge.textContent = isLive ? "Live CPSC API" : "Snapshot fallback";
+          feedBadge.style.color = isLive ? "#28583f" : "#8b692d";
+          feedBadge.style.background = isLive ? "#eaf2eb" : "#faf2e3";
+
+          feedSourceState.textContent = isLive ? "Live API" : "Local snapshot";
+          feedSourceState.style.color = isLive ? "#28583f" : "#8b692d";
+          feedSourceMeta.textContent = isLive
+            ? "Connected to CPSC RestWebServices"
+            : "Fallback snapshot data";
+
+          feedRecordsState.textContent = `${fs.cached_recalls_count || 0} cached`;
+          feedRecordsMeta.textContent = `${fs.snapshot_records_count || 0} in local snapshot file`;
+
+          feedFreshnessState.textContent = isStale ? "Stale (fallback)" : "Live / Fresh";
+          feedFreshnessState.style.color = isStale ? "#8b692d" : "#28583f";
+          feedFreshnessMeta.textContent = fs.latest_cached_at
+            ? `Latest: ${fs.latest_cached_at.slice(0, 19).replace("T", " ")}`
+            : "No records cached yet";
+
+          feedNote.textContent = isLive
+            ? "Active: Using live CPSC REST API records. Data is fresh."
+            : "Active: Using local CPSC snapshot fallback. Source staleness applies until live API sync succeeds.";
+        } catch (err) {
+          connectionText.textContent = "Disconnected";
+          statusDot.style.background = "#c33636";
+          apiStatusBadge.textContent = "Offline";
+        }
+      }
+
+      async function fetchCases() {
+        try {
+          const res = await fetch(`${API_BASE}/api/cases`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const cases = data.cases || [];
+
+          caseCountLabel.textContent = `${cases.length} case${cases.length === 1 ? "" : "s"}`;
+
+          if (cases.length === 0) {
+            emptyLedger.style.display = "grid";
+            casesContainer.innerHTML = "";
+            return;
+          }
+
+          emptyLedger.style.display = "none";
+          casesContainer.innerHTML = cases
+            .map((c) => {
+              const stateColors = {
+                POSSIBLE_MATCH: "color:#8b692d; background:#faf2e3;",
+                CONFIRMED_AFFECTED: "color:#9c2e2e; background:#fde8e8;",
+                NOT_LISTED: "color:#4b5563; background:#f3f4f6;",
+                REMEDY_STARTED: "color:#1d4ed8; background:#eff6ff;",
+                CLOSED: "color:#15803d; background:#f0fdf4;",
+              };
+              const badgeStyle = stateColors[c.state] || "";
+
+              let transitionButtons = "";
+              if (c.state === "POSSIBLE_MATCH") {
+                transitionButtons = `
+                  <button class="secondary-button" onclick="handleTransition(${c.id}, 'CONFIRMED_AFFECTED', true)">Confirm affected</button>
+                  <button class="secondary-button" onclick="handleTransition(${c.id}, 'NOT_LISTED', true)">Mark not listed</button>
+                  <button class="danger-button" title="Test rejection without label evidence" onclick="handleTransition(${c.id}, 'CONFIRMED_AFFECTED', false)">Test invalid transition</button>
+                `;
+              } else if (c.state === "CONFIRMED_AFFECTED") {
+                transitionButtons = `
+                  <button class="secondary-button" onclick="handleTransition(${c.id}, 'REMEDY_STARTED', true)">Start remedy</button>
+                  <button class="danger-button" title="Test rejection without remedy note" onclick="handleTransition(${c.id}, 'REMEDY_STARTED', false)">Test invalid transition</button>
+                `;
+              } else if (c.state === "REMEDY_STARTED") {
+                transitionButtons = `
+                  <button class="secondary-button" onclick="handleTransition(${c.id}, 'CLOSED', true)">Close case</button>
+                  <button class="danger-button" title="Test rejection without remedy note" onclick="handleTransition(${c.id}, 'CLOSED', false)">Test invalid transition</button>
+                `;
+              }
+
+              const evidenceText = c.label_evidence || c.remedy_note || "No specific evidence recorded yet.";
+
+              return `
+                <div class="case-item" style="border-bottom: 1px solid #edf0eb; padding: 14px 0;">
+                  <div class="case-row" style="border-bottom: 0; padding: 0 0 8px;">
+                    <div>
+                      <span class="case-primary">Item #${c.item_id}</span>
+                      <span class="case-secondary">Case #${c.id}</span>
+                    </div>
+                    <div>
+                      <span class="case-primary">${escapeHtml(c.recall_id || "Unlinked recall")}</span>
+                      <span class="case-secondary">Deterministic Match</span>
+                    </div>
+                    <div>
+                      <span class="case-state" style="${badgeStyle}">${escapeHtml(c.state)}</span>
+                      <span class="case-updated">${escapeHtml(c.updated_at ? c.updated_at.slice(0, 19).replace("T", " ") : "")}</span>
+                    </div>
+                  </div>
+                  <details class="case-evidence">
+                    <summary>View evidence & remedy details</summary>
+                    <p>${escapeHtml(evidenceText)}</p>
+                  </details>
+                  ${
+                    transitionButtons
+                      ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">${transitionButtons}</div>`
+                      : ""
+                  }
+                  <p id="transition-err-${c.id}" style="display:none; color:#9c2e2e; background:#fde8e8; border:1px solid #f8b4b4; border-radius:6px; font-size:10px; margin:6px 0 0; padding:6px 8px;"></p>
+                </div>
+              `;
+            })
+            .join("");
+        } catch (err) {
+          console.error("Failed to fetch cases:", err);
+        }
+      }
+
+      async function fetchAudit() {
+        try {
+          const res = await fetch(`${API_BASE}/api/audit`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const logs = data.audit_log || [];
+
+          if (logs.length === 0) {
+            traceEmpty.style.display = "block";
+            traceEventsList.innerHTML = "";
+            traceBadge.textContent = "0 events";
+            return;
+          }
+
+          traceEmpty.style.display = "none";
+          traceBadge.textContent = `${logs.length} events`;
+
+          // Display latest 8 events descending
+          const recentLogs = logs.slice(-8).reverse();
+          traceEventsList.innerHTML = recentLogs
+            .map((entry) => {
+              const isSuccess = entry.outcome === "SUCCESS";
+              const dotColor = isSuccess ? "#8ca993" : "#c33636";
+              const outcomeBadge = isSuccess
+                ? `<span style="color:#28583f; font-weight:700;">[SUCCESS]</span>`
+                : `<span style="color:#9c2e2e; font-weight:700;">[REJECTED]</span>`;
+              return `
+                <li class="trace-event">
+                  <span class="trace-event-dot" style="border-color:${dotColor};" aria-hidden="true"></span>
+                  <div>
+                    <strong>${outcomeBadge} Case #${entry.case_id || "—"}: ${escapeHtml(entry.from_state || "START")} &rarr; ${escapeHtml(entry.to_state)}</strong>
+                    <span>${escapeHtml(entry.reason)} · ${escapeHtml(entry.created_at ? entry.created_at.slice(11, 19) : "")}</span>
+                  </div>
+                </li>
+              `;
+            })
+            .join("");
+        } catch (err) {
+          console.error("Failed to fetch audit log:", err);
+        }
+      }
+
+      window.handleTransition = async function(caseId, targetState, provideEvidence) {
+        const errEl = document.querySelector(`#transition-err-${caseId}`);
+        if (errEl) errEl.style.display = "none";
+
+        let labelEvidence = null;
+        let remedyNote = null;
+
+        if (provideEvidence) {
+          if (targetState === "CONFIRMED_AFFECTED" || targetState === "NOT_LISTED") {
+            labelEvidence = prompt(
+              `Enter label evidence for ${targetState} (e.g. 'Serial and model label verified on unit matches recall notice'):`,
+              "Inspected physical label and confirmed model identifier matches recall notice."
+            );
+            if (!labelEvidence) return;
+          } else if (targetState === "REMEDY_STARTED" || targetState === "CLOSED") {
+            remedyNote = prompt(
+              `Enter remedy note for ${targetState} (e.g. 'Initiated recall repair kit with manufacturer'):`,
+              "Remedy initiated in accordance with manufacturer recall guidance."
+            );
+            if (!remedyNote) return;
+          }
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/api/cases/${caseId}/advance`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              new_state: targetState,
+              label_evidence: labelEvidence,
+              remedy_note: remedyNote,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            const errorMsg = data.detail || data.error || `HTTP ${res.status} rejection`;
+            if (errEl) {
+              errEl.textContent = `Rejection: ${errorMsg}`;
+              errEl.style.display = "block";
+            }
+          } else {
+            await fetchCases();
+            await fetchAudit();
+            await fetchStatus();
+          }
+        } catch (err) {
+          if (errEl) {
+            errEl.textContent = `Request error: ${err.message}`;
+            errEl.style.display = "block";
+          }
+        }
+      };
+
+      productForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        formFeedback.textContent =
-          "Demo data only — no live recall lookup was performed.";
+        formFeedback.textContent = "Registering product and performing deterministic recall check...";
+        formFeedback.style.color = "#7b6a49";
+
+        const formData = new FormData(productForm);
+        const name = formData.get("name")?.trim();
+        const brand = formData.get("brand")?.trim() || null;
+        const model = formData.get("model")?.trim() || null;
+        const upc = formData.get("upc")?.trim() || null;
+
+        if (!name) {
+          formFeedback.textContent = "Product name is required.";
+          formFeedback.style.color = "#9c2e2e";
+          return;
+        }
+
+        try {
+          // 1. Add item
+          const itemRes = await fetch(`${API_BASE}/api/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, brand, model, upc }),
+          });
+
+          if (!itemRes.ok) {
+            const errData = await itemRes.json();
+            throw new Error(errData.detail || errData.error || "Failed to register product");
+          }
+
+          const itemData = await itemRes.json();
+          const itemId = itemData.item_id;
+
+          // 2. Check recalls
+          const checkRes = await fetch(`${API_BASE}/api/check-recalls`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ item_id: itemId }),
+          });
+
+          if (!checkRes.ok) {
+            const errData = await checkRes.json();
+            throw new Error(errData.detail || errData.error || "Failed to check recalls");
+          }
+
+          const checkData = await checkRes.json();
+          const matches = checkData.matches || [];
+
+          formFeedback.textContent = `Product #${itemId} ("${name}") registered successfully. Match check completed: found ${matches.length} matching recall record(s).`;
+          formFeedback.style.color = "#28583f";
+          productForm.reset();
+
+          await fetchCases();
+          await fetchAudit();
+          await fetchStatus();
+        } catch (err) {
+          formFeedback.textContent = `Error: ${err.message}`;
+          formFeedback.style.color = "#9c2e2e";
+        }
       });
+
+      chatForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const msg = chatInput.value.trim();
+        if (!msg) return;
+
+        assistantCopy.innerHTML = "<em>Analyzing request with tools...</em>";
+        chatInput.value = "";
+
+        try {
+          const res = await fetch(`${API_BASE}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || errData.error || `HTTP ${res.status}`);
+          }
+
+          const data = await res.json();
+          assistantCopy.innerHTML = `<strong>Assistant:</strong> ${escapeHtml(data.response || "No response returned.")}`;
+
+          await fetchCases();
+          await fetchAudit();
+          await fetchStatus();
+        } catch (err) {
+          assistantCopy.innerHTML = `<span style="color:#9c2e2e;">Error processing chat request: ${escapeHtml(err.message)}</span>`;
+        }
+      });
+
+      btnSyncFeeds.addEventListener("click", async () => {
+        btnSyncFeeds.disabled = true;
+        btnSyncFeeds.textContent = "Syncing...";
+        try {
+          const res = await fetch(`${API_BASE}/api/feeds/sync`, { method: "POST" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          await fetchStatus();
+          await fetchAudit();
+        } catch (err) {
+          alert(`Feed sync failed: ${err.message}`);
+        } finally {
+          btnSyncFeeds.disabled = false;
+          btnSyncFeeds.textContent = "Sync recall feeds";
+        }
+      });
+
+      // Initial load
+      fetchStatus();
+      fetchCases();
+      fetchAudit();
     </script>
   </body>
 </html>
+

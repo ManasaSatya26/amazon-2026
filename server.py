@@ -17,8 +17,12 @@ import re
 from contextlib import asynccontextmanager
 from typing import Any
 
+from pathlib import Path
+
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from core import DEFAULT_DATABASE_PATH, RecallCloserCore, initialize
@@ -41,6 +45,13 @@ async def lifespan(app: FastAPI):
     """Initialize and shut down the SQLite core database connection."""
     db_path = os.environ.get("RECALL_CLOSER_DB", str(DEFAULT_DATABASE_PATH))
     app.state.core = initialize(db_path)
+    try:
+        cached = app.state.core.list_cached_recalls()
+        if not cached:
+            from feeds import sync_cpsc_recalls
+            sync_cpsc_recalls(core=app.state.core)
+    except Exception:
+        pass
     yield
     if hasattr(app.state, "core") and app.state.core is not None:
         app.state.core.close()
@@ -53,6 +64,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+static_path = Path(__file__).resolve().parent / "static"
+if static_path.is_dir():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
 
 def get_core(request: Request) -> RecallCloserCore:
     """Retrieve the shared RecallCloserCore database instance from app state."""
@@ -63,6 +86,23 @@ def get_core(request: Request) -> RecallCloserCore:
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, description="User prompt or inquiry")
+
+
+class ItemCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, description="Product name")
+    brand: str | None = Field(None, description="Brand name")
+    model: str | None = Field(None, description="Model identifier")
+    upc: str | None = Field(None, description="UPC or serial number")
+
+
+class CheckRecallsRequest(BaseModel):
+    item_id: int | None = Field(None, description="Optional product ID to check")
+
+
+class AdvanceCaseRequest(BaseModel):
+    new_state: str = Field(..., min_length=1, description="Target case state")
+    label_evidence: str | None = Field(None, description="Label evidence")
+    remedy_note: str | None = Field(None, description="Remedy note")
 
 
 class McpRpcRequest(BaseModel):
@@ -126,6 +166,73 @@ def get_audit(
         }
     except Exception as exc:
         raise HTTPException(status_code=400, detail=_redact_secrets(str(exc)))
+
+
+@app.get("/api/items")
+def get_items(core: RecallCloserCore = Depends(get_core)) -> dict[str, Any]:
+    """Retrieve household product inventory."""
+    items = core.list_items()
+    return {"success": True, "count": len(items), "items": items}
+
+
+@app.post("/api/items")
+def create_item(
+    item_req: ItemCreateRequest,
+    core: RecallCloserCore = Depends(get_core),
+) -> dict[str, Any]:
+    """Add a household product to inventory."""
+    result = run_tool("add_item", item_req.model_dump(), core=core)
+    if not result.get("success", False):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+
+@app.post("/api/check-recalls")
+def check_recalls_endpoint(
+    req: CheckRecallsRequest | None = None,
+    core: RecallCloserCore = Depends(get_core),
+) -> dict[str, Any]:
+    """Check inventory against cached recalls using deterministic matcher."""
+    item_id = req.item_id if req is not None else None
+    result = run_tool("check_recalls", {"item_id": item_id}, core=core)
+    if not result.get("success", False):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+
+@app.post("/api/cases/{case_id}/advance")
+def advance_case_endpoint(
+    case_id: int,
+    req: AdvanceCaseRequest,
+    core: RecallCloserCore = Depends(get_core),
+) -> dict[str, Any]:
+    """Advance case state with evidence validation and audit logging."""
+    args = {
+        "case_id": case_id,
+        "new_state": req.new_state,
+        "label_evidence": req.label_evidence,
+        "remedy_note": req.remedy_note,
+    }
+    result = run_tool("advance_case", args, core=core)
+    if not result.get("success", False):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+
+@app.post("/api/feeds/sync")
+def sync_feeds_endpoint(
+    core: RecallCloserCore = Depends(get_core),
+) -> dict[str, Any]:
+    """Fetch live CPSC recalls or fall back to verified local snapshot."""
+    from feeds import sync_cpsc_recalls
+
+    sync_result = sync_cpsc_recalls(core=core)
+    status_res = run_tool("feed_status", core=core)
+    return {
+        "success": True,
+        "sync": sync_result,
+        "feed_status": status_res,
+    }
 
 
 @app.post("/mcp")
@@ -212,11 +319,20 @@ def handle_chat(
         if "status" in lower_msg or "feed" in lower_msg:
             tool_res = run_tool("feed_status", core=core)
             tools_called.append({"tool": "feed_status", "result": tool_res})
-            reply = f"Here is the current recall feed status: {tool_res.get('cached_recalls_count', 0)} recalls cached."
-        elif "cases" in lower_msg:
+            feed_src = tool_res.get("feed_source", "local_snapshot")
+            stale_str = "stale snapshot fallback" if tool_res.get("stale") else "live fresh data"
+            reply = f"Recall feed status: {tool_res.get('cached_recalls_count', 0)} recalls cached from {feed_src} ({stale_str})."
+        elif "cases" in lower_msg or "case" in lower_msg:
             tool_res = run_tool("list_cases", core=core)
             tools_called.append({"tool": "list_cases", "result": tool_res})
-            reply = f"Found {tool_res.get('count', 0)} tracked recall cases."
+            reply = f"Found {tool_res.get('count', 0)} tracked recall case(s) in the database."
+        elif "check" in lower_msg or "recall" in lower_msg:
+            tool_res = run_tool("check_recalls", core=core)
+            tools_called.append({"tool": "check_recalls", "result": tool_res})
+            reply = f"Deterministic recall check executed against {tool_res.get('items_checked', 0)} item(s). Found {tool_res.get('match_count', 0)} match(es)."
+        elif "item" in lower_msg or "inventory" in lower_msg or "product" in lower_msg:
+            items = core.list_items()
+            reply = f"Inventory contains {len(items)} registered product(s)."
         else:
             reply = (
                 "Recall Closer Assistant: Gemini API key is not configured. "

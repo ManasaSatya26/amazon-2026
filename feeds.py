@@ -15,6 +15,16 @@ DEFAULT_TIMEOUT = 8.0
 DEFAULT_USER_AGENT = "RecallCloser/0.1.0"
 DEFAULT_SNAPSHOT_PATH = Path(__file__).resolve().parent / "data" / "cpsc_snapshot.json"
 
+_FEED_SYNC_STATE: dict[str, Any] = {
+    "source": "local_snapshot",
+    "stale": True,
+}
+
+
+def get_feed_sync_state() -> dict[str, Any]:
+    """Return the source and staleness state of the most recent feed sync."""
+    return dict(_FEED_SYNC_STATE)
+
 
 def normalize_cpsc_recall(item: dict[str, Any]) -> dict[str, Any]:
     """Normalize actual CPSC source fields preserving all essential attributes."""
@@ -139,6 +149,9 @@ def ingest_cpsc_recalls(
                     source=rec["source"],
                     description=rec["description"],
                 )
+
+    _FEED_SYNC_STATE["source"] = source
+    _FEED_SYNC_STATE["stale"] = stale
 
     return {
         "source": source,

@@ -23,7 +23,7 @@ from core import (
     ValidationError,
     initialize,
 )
-from feeds import load_cpsc_snapshot
+from feeds import get_feed_sync_state, load_cpsc_snapshot
 
 
 def _get_core(core: RecallCloserCore | None) -> tuple[RecallCloserCore, bool]:
@@ -275,6 +275,7 @@ def feed_status(
 
         snapshot_records = load_cpsc_snapshot(snapshot_path)
 
+        sync_state = get_feed_sync_state()
         return {
             "success": True,
             "cached_recalls_count": len(cached),
@@ -282,6 +283,9 @@ def feed_status(
             "latest_cached_at": latest_cached_at,
             "snapshot_available": len(snapshot_records) > 0,
             "snapshot_records_count": len(snapshot_records),
+            "feed_source": sync_state.get("source", "local_snapshot"),
+            "stale": sync_state.get("stale", True),
+            "is_live": sync_state.get("source") == "cpsc_api",
         }
     except Exception as exc:
         return {
