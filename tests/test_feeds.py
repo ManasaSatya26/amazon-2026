@@ -1,18 +1,21 @@
-"""Unit tests for CPSC feed ingestion and normalization."""
+"""Unit tests for CPSC feed ingestion, normalization, and recalls_cache integration."""
 
 import json
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
 import httpx
 
+from core import RecallCloserCore
 from feeds import (
     DEFAULT_TIMEOUT,
     get_feeds,
     ingest_cpsc_recalls,
     load_cpsc_snapshot,
     normalize_cpsc_recall,
+    sync_cpsc_recalls,
 )
 
 
@@ -145,6 +148,90 @@ class TestCPSCFeeds(unittest.TestCase):
 
         self.assertEqual(result["source"], "local_snapshot")
         self.assertTrue(result["stale"])
+
+    def test_sync_persists_recalls_to_database(self) -> None:
+        """Verify that sync_cpsc_recalls persists normalized records into core's recalls_cache."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = Path(tmp_dir) / "test.db"
+            core = RecallCloserCore(db_path)
+            try:
+                mock_client = MagicMock(spec=httpx.Client)
+                mock_response = MagicMock(spec=httpx.Response)
+                mock_response.status_code = 200
+                mock_response.json.return_value = [self.sample_cpsc_record]
+                mock_response.raise_for_status = MagicMock()
+                mock_client.get.return_value = mock_response
+
+                result = sync_cpsc_recalls(core=core, client=mock_client)
+
+                self.assertEqual(result["source"], "cpsc_api")
+                self.assertFalse(result["stale"])
+
+                cached = core.list_cached_recalls()
+                self.assertEqual(len(cached), 1)
+                self.assertEqual(cached[0]["recall_id"], "10548")
+                self.assertEqual(cached[0]["title"], "Vasicar 18-Drawer Dressers Recalled")
+                self.assertEqual(cached[0]["source"], "CPSC")
+                self.assertIn("wooden top", cached[0]["description"])
+            finally:
+                core.close()
+
+    def test_sync_duplicate_prevention_idempotency(self) -> None:
+        """Verify running sync repeatedly does not create duplicate recall records."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = Path(tmp_dir) / "test.db"
+            core = RecallCloserCore(db_path)
+            try:
+                mock_client = MagicMock(spec=httpx.Client)
+                mock_response = MagicMock(spec=httpx.Response)
+                mock_response.status_code = 200
+                mock_response.json.return_value = [self.sample_cpsc_record]
+                mock_response.raise_for_status = MagicMock()
+                mock_client.get.return_value = mock_response
+
+                # First run
+                sync_cpsc_recalls(core=core, client=mock_client)
+                first_count = len(core.list_cached_recalls())
+                self.assertEqual(first_count, 1)
+
+                # Second run with same data
+                sync_cpsc_recalls(core=core, client=mock_client)
+                second_count = len(core.list_cached_recalls())
+                self.assertEqual(second_count, 1)
+
+                # Update with altered description
+                updated_record = dict(self.sample_cpsc_record)
+                updated_record["Description"] = "Updated recall description."
+                mock_response.json.return_value = [updated_record]
+
+                sync_cpsc_recalls(core=core, client=mock_client)
+                cached = core.list_cached_recalls()
+                self.assertEqual(len(cached), 1)
+                self.assertEqual(cached[0]["description"], "Updated recall description.")
+            finally:
+                core.close()
+
+    def test_sync_snapshot_fallback_persists_to_cache(self) -> None:
+        """Verify simulated network failure falls back to local snapshot and caches records."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = Path(tmp_dir) / "test.db"
+            core = RecallCloserCore(db_path)
+            try:
+                mock_client = MagicMock(spec=httpx.Client)
+                mock_client.get.side_effect = httpx.ConnectTimeout("Network unreachable")
+
+                result = sync_cpsc_recalls(core=core, client=mock_client)
+
+                self.assertEqual(result["source"], "local_snapshot")
+                self.assertTrue(result["stale"])
+
+                cached = core.list_cached_recalls()
+                self.assertGreater(len(cached), 0)
+                cached_ids = {r["recall_id"] for r in cached}
+                self.assertIn("10548", cached_ids)
+                self.assertIn("10549", cached_ids)
+            finally:
+                core.close()
 
 
 if __name__ == "__main__":

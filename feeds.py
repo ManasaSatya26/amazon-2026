@@ -1,10 +1,14 @@
 """Recall Closer feed integrations for CPSC recall data."""
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 from typing import Any
 
 import httpx
+
+from core import DatabasePath, RecallCloserCore, initialize
 
 CPSC_API_URL = "https://www.saferproducts.gov/RestWebServices/Recall"
 DEFAULT_TIMEOUT = 8.0
@@ -14,8 +18,14 @@ DEFAULT_SNAPSHOT_PATH = Path(__file__).resolve().parent / "data" / "cpsc_snapsho
 
 def normalize_cpsc_recall(item: dict[str, Any]) -> dict[str, Any]:
     """Normalize actual CPSC source fields preserving all essential attributes."""
-    recall_id = item.get("RecallID")
-    recall_number = item.get("RecallNumber")
+    raw_id = item.get("RecallID")
+    raw_number = item.get("RecallNumber")
+    recall_id = str(raw_id if raw_id is not None else (raw_number or "")).strip()
+    recall_number = str(raw_number if raw_number is not None else "").strip()
+
+    title = (item.get("Title") or "").strip()
+    if not title and recall_id:
+        title = f"CPSC Recall {recall_id}"
 
     products = [
         p.get("Name", "")
@@ -40,7 +50,6 @@ def normalize_cpsc_recall(item: dict[str, Any]) -> dict[str, Any]:
 
     description = item.get("Description") or ""
     url = item.get("URL") or ""
-    title = item.get("Title") or ""
     recall_date = item.get("RecallDate") or ""
 
     # Check if sold on Amazon
@@ -48,8 +57,8 @@ def normalize_cpsc_recall(item: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "source": "CPSC",
-        "recall_id": str(recall_id) if recall_id is not None else "",
-        "recall_number": str(recall_number) if recall_number is not None else "",
+        "recall_id": recall_id,
+        "recall_number": recall_number,
         "recall_date": recall_date,
         "title": title,
         "description": description,
@@ -81,6 +90,7 @@ def ingest_cpsc_recalls(
     timeout: float = DEFAULT_TIMEOUT,
     snapshot_path: Path | str | None = None,
     client: httpx.Client | None = None,
+    core: RecallCloserCore | None = None,
 ) -> dict[str, Any]:
     """Fetch CPSC endpoint using httpx with timeout; fall back to local snapshot on failure."""
     params: dict[str, str] = {"format": "json"}
@@ -119,6 +129,17 @@ def ingest_cpsc_recalls(
         stale = True
 
     normalized_records = [normalize_cpsc_recall(item) for item in raw_items]
+
+    if core is not None:
+        for rec in normalized_records:
+            if rec["recall_id"] and rec["title"]:
+                core.cache_recall(
+                    recall_id=rec["recall_id"],
+                    title=rec["title"],
+                    source=rec["source"],
+                    description=rec["description"],
+                )
+
     return {
         "source": source,
         "stale": stale,
@@ -127,14 +148,50 @@ def ingest_cpsc_recalls(
     }
 
 
+def sync_cpsc_recalls(
+    core: RecallCloserCore | None = None,
+    *,
+    database_path: DatabasePath | None = None,
+    recall_date_start: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT,
+    snapshot_path: Path | str | None = None,
+    client: httpx.Client | None = None,
+) -> dict[str, Any]:
+    """Fetch or fall back CPSC recalls and persist them into recalls_cache.
+
+    Ensures idempotent caching using core's existing cache_recall interface.
+    """
+    should_close = False
+    engine = core
+    if engine is None:
+        engine = initialize(database_path) if database_path is not None else initialize()
+        should_close = True
+
+    try:
+        result = ingest_cpsc_recalls(
+            recall_date_start=recall_date_start,
+            timeout=timeout,
+            snapshot_path=snapshot_path,
+            client=client,
+            core=engine,
+        )
+    finally:
+        if should_close and engine is not None:
+            engine.close()
+
+    return result
+
+
 def get_feeds(
     recall_date_start: str | None = None,
     timeout: float = DEFAULT_TIMEOUT,
     snapshot_path: Path | str | None = None,
+    core: RecallCloserCore | None = None,
 ) -> dict[str, Any]:
-    """Retrieve normalized CPSC recall feeds."""
+    """Retrieve normalized CPSC recall feeds, optionally persisting into core."""
     return ingest_cpsc_recalls(
         recall_date_start=recall_date_start,
         timeout=timeout,
         snapshot_path=snapshot_path,
+        core=core,
     )
